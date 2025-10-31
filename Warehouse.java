@@ -33,7 +33,9 @@ public class Warehouse {
             p.decreaseStock(qty);
             System.out.println("🧾 Order fulfilled from " + name + ": " + qty + " " + p.getName());
             if (p.isLowStock()) {
-                System.out.println("⚠️ ALERT: Low stock for " + p.getName() + " in " + name + " warehouse – only " + p.getQuantity() + " left!");
+                System.out.println("⚠️ ALERT: Low stock for " + p.getName() +
+                        " in " + name + " warehouse – only " + p.getQuantity() +
+                        " left (threshold " + p.getThreshold() + ")");
             }
         } else {
             System.out.println("❌ Product not found in this warehouse!");
@@ -51,3 +53,4 @@ public class Warehouse {
         }
     }
 }
+
