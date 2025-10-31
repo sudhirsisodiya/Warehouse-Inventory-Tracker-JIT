@@ -1,80 +1,101 @@
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.concurrent.*;
+package main;
+
+import model.Product;
+import service.Warehouse;
+import service.AlertService;
+import java.util.InputMismatchException;
+import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
-        try {
-            // Create two warehouses (bonus: multiple warehouses)
-            Warehouse whA = new Warehouse("Central");
-            Warehouse whB = new Warehouse("Overflow");
+        AlertService alert = (product) -> {
+            System.out.println("Restock Alert: " + product.getName() +
+                               " is low on stock. Only " + product.getQuantity() + " left.");
+        };
 
-            // Register alert services (demonstrates Observer pattern)
-            AlertService consoleAlert = new AlertService("ConsoleNotifier");
-            whA.registerObserver(consoleAlert);
-            whB.registerObserver(consoleAlert);
+        Warehouse warehouse = new Warehouse(alert);
+        Scanner sc = new Scanner(System.in);
 
-            // Add product "Laptop" with threshold 5
-            Product laptop = new Product("P001", "Laptop", 0, 5);
-            whA.addProduct(laptop);
+        while (true) {
+            System.out.println("\n===== WAREHOUSE INVENTORY MENU =====");
+            System.out.println("1. Add Product");
+            System.out.println("2. Receive Shipment");
+            System.out.println("3. Fulfill Order");
+            System.out.println("4. View Inventory");
+            System.out.println("5. Exit");
+            System.out.print("Enter your choice: ");
 
-            // Example workflow from prompt:
-            System.out.println("=== Example workflow ===");
-            whA.receiveShipment("P001", 10); // total = 10
-            System.out.println("After shipment: " + whA.getProduct("P001"));
-            whA.fulfillOrder("P001", 6);     // remaining = 4 -> triggers alert
-            System.out.println("After fulfilling 6 orders: " + whA.getProduct("P001"));
+            int choice = getSafeInt(sc, "menu choice");
 
-            // Save state to file
-            Path file = Paths.get("warehouse_central.csv");
-            whA.saveToFile(file);
-            System.out.println("Saved inventory to " + file.toAbsolutePath());
+            switch (choice) {
+                case 1:
+                    System.out.print("Enter Product ID: ");
+                    String id = sc.next().trim();
 
-            // Demonstrate reload into a new Warehouse instance
-            Warehouse reload = new Warehouse("Central_Reloaded");
-            reload.registerObserver(consoleAlert);
-            reload.loadFromFile(file);
-            System.out.println("Reloaded products:");
-            for (Product p : reload.listProducts()) {
-                System.out.println(" - " + p);
+                    System.out.print("Enter Product Name: ");
+                    String name = sc.next().trim();
+
+                    int qty = getPositiveInt(sc, "initial quantity");
+                    int threshold = getPositiveInt(sc, "reorder threshold");
+
+                    warehouse.addProduct(new Product(id, name, qty, threshold));
+                    System.out.println("Product added successfully.");
+                    break;
+
+                case 2:
+                    System.out.print("Enter Product ID: ");
+                    id = sc.next().trim();
+
+                    qty = getPositiveInt(sc, "shipment quantity");
+                    warehouse.receiveShipment(id, qty);
+                    System.out.println("Shipment received successfully.");
+                    break;
+
+                case 3:
+                    System.out.print("Enter Product ID: ");
+                    id = sc.next().trim();
+
+                    qty = getPositiveInt(sc, "order quantity");
+                    warehouse.fulfillOrder(id, qty);
+                    System.out.println("Order processed successfully.");
+                    break;
+
+                case 4:
+                    System.out.println("\n----------- INVENTORY LIST -----------");
+                    warehouse.viewInventory();
+                    System.out.println("--------------------------------------");
+                    break;
+
+                case 5:
+                    System.out.println("Exiting System. Goodbye.");
+                    sc.close();
+                    return;
+
+                default:
+                    System.out.println("Invalid choice. Please enter a number between 1 and 5.");
             }
+        }
+    }
 
-            // Multithreading simulation: simulate many concurrent orders and shipments
-            System.out.println("\n=== Multithreaded simulation ===");
-            Product phone = new Product("P002", "Phone", 50, 10);
-            whA.addProduct(phone);
-
-            ExecutorService ex = Executors.newFixedThreadPool(8);
-            int tasks = 50;
-            CountDownLatch latch = new CountDownLatch(tasks);
-            for (int i = 0; i < tasks; i++) {
-                final int taskNo = i;
-                ex.submit(() -> {
-                    try {
-                        if (taskNo % 3 == 0) {
-                            // shipment arrives sometimes
-                            whA.receiveShipment("P002", 5);
-                        } else {
-                            try {
-                                whA.fulfillOrder("P002", 3);
-                            } catch (InsufficientStockException e) {
-                                // handle gracefully: print and continue
-                                System.out.println("Thread " + Thread.currentThread().getName() + " - " + e.getMessage());
-                            }
-                        }
-                    } catch (ProductNotFoundException pnfe) {
-                        System.err.println("Unexpected: " + pnfe.getMessage());
-                    } finally {
-                        latch.countDown();
-                    }
-                });
+    private static int getSafeInt(Scanner sc, String fieldName) {
+        while (true) {
+            try {
+                return sc.nextInt();
+            } catch (InputMismatchException e) {
+                System.out.print("Invalid input for " + fieldName + ". Please enter a valid number: ");
+                sc.nextLine();
             }
-            latch.await();
-            ex.shutdown();
-            System.out.println("Final state for Phone: " + whA.getProduct("P002"));
+        }
+    }
 
-        } catch (Exception e) {
-            e.printStackTrace();
+    private static int getPositiveInt(Scanner sc, String fieldName) {
+        int value;
+        while (true) {
+            value = getSafeInt(sc, fieldName);
+            if (value >= 0) {
+                return value;
+            }
+            System.out.print("Value for " + fieldName + " cannot be negative. Enter again: ");
         }
     }
 }

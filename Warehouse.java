@@ -1,108 +1,114 @@
-import java.io.*;
-import java.nio.file.*;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+package service;
+
+import model.Product;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Warehouse {
-    private final String name;
-    private final Map<String, Product> products = new ConcurrentHashMap<>();
-    private final List<StockObserver> observers = Collections.synchronizedList(new ArrayList<>());
+    private final Map<String, Product> inventory = new HashMap<>();
+    private final AlertService alertService;
 
-    public Warehouse(String name) {
-        if (name == null || name.isEmpty()) throw new IllegalArgumentException("Warehouse name required");
-        this.name = name;
+    public Warehouse(AlertService alertService) {
+        if (alertService == null) {
+            throw new IllegalArgumentException("AlertService cannot be null.");
+        }
+        this.alertService = alertService;
     }
 
-    public String getName() { return name; }
-
-    /**
-     * Add a product. If a product with same id exists, throws IllegalArgumentException.
-     */
     public void addProduct(Product product) {
-        Objects.requireNonNull(product);
-        Product prev = products.putIfAbsent(product.getId(), product);
-        if (prev != null) {
-            throw new IllegalArgumentException("Product with ID already exists: " + product.getId());
+        if (product == null) {
+            System.out.println("Error: Product cannot be null.");
+            return;
         }
-        // optional: if added product is already below threshold, notify observers
-        checkAndNotify(product);
+
+        String productId = product.getProductId();
+        if (productId == null || productId.trim().isEmpty()) {
+            System.out.println("Error: Product ID cannot be empty.");
+            return;
+        }
+
+        if (inventory.containsKey(productId)) {
+            System.out.println("Error: A product with ID '" + productId + "' already exists.");
+            return;
+        }
+
+        inventory.put(productId, product);
+        System.out.println("Product added successfully: " + product.getName());
     }
 
-    /**
-     * Receive a shipment (increase quantity). Throws ProductNotFoundException for invalid id.
-     */
-    public void receiveShipment(String productId, int amount) throws ProductNotFoundException {
-        Product p = products.get(productId);
-        if (p == null) throw new ProductNotFoundException(productId);
-        p.increase(amount);
-        // After increase no need to alert (unless negative thresholds, but not expected)
+    public void receiveShipment(String productId, int quantity) {
+        if (isInvalidProductId(productId) || isInvalidQuantity(quantity, "shipment")) {
+            return;
+        }
+
+        Product product = inventory.get(productId);
+        if (product == null) {
+            System.out.println("Error: Product with ID '" + productId + "' not found in inventory.");
+            return;
+        }
+
+        product.setQuantity(product.getQuantity() + quantity);
+        System.out.println("Shipment received for " + product.getName() +
+                " | Updated Quantity: " + product.getQuantity());
     }
 
-    /**
-     * Fulfill an order (decrease quantity). Throws ProductNotFoundException or InsufficientStockException.
-     */
-    public void fulfillOrder(String productId, int amount) throws ProductNotFoundException, InsufficientStockException {
-        Product p = products.get(productId);
-        if (p == null) throw new ProductNotFoundException(productId);
-        p.decrease(amount);
-        checkAndNotify(p);
-    }
+    public void fulfillOrder(String productId, int quantity) {
+        if (isInvalidProductId(productId) || isInvalidQuantity(quantity, "order")) {
+            return;
+        }
 
-    public Product getProduct(String productId) {
-        return products.get(productId);
-    }
+        Product product = inventory.get(productId);
+        if (product == null) {
+            System.out.println("Error: Product with ID '" + productId + "' not found.");
+            return;
+        }
 
-    public Collection<Product> listProducts() {
-        return Collections.unmodifiableCollection(products.values());
-    }
+        if (product.getQuantity() < quantity) {
+            System.out.println("Error: Insufficient stock for " + product.getName() +
+                    " | Available: " + product.getQuantity() + ", Required: " + quantity);
+            return;
+        }
 
-    public void registerObserver(StockObserver observer) {
-        observers.add(Objects.requireNonNull(observer));
-    }
+        product.setQuantity(product.getQuantity() - quantity);
+        System.out.println("Order fulfilled for " + product.getName() +
+                " | Remaining Quantity: " + product.getQuantity());
 
-    public void unregisterObserver(StockObserver observer) {
-        observers.remove(observer);
-    }
-
-    private void checkAndNotify(Product p) {
-        if (p.getQuantity() < p.getReorderThreshold()) {
-            // notify all observers
-            synchronized (observers) {
-                for (StockObserver obs : observers) {
-                    try {
-                        obs.onLowStock(name, p);
-                    } catch (Exception e) {
-                        System.err.println("Observer threw exception: " + e.getMessage());
-                    }
-                }
-            }
+        if (product.getQuantity() < product.getReorderThreshold()) {
+            alertService.onLowStock(product);
         }
     }
 
-   
-    // Simple persistence (CSV)
-    /**
-     * Save inventory to a simple CSV text file. Overwrites if exists.
-     */
-    public void saveToFile(Path path) throws IOException {
-        List<String> lines = new ArrayList<>();
-        for (Product p : products.values()) {
-            lines.add(p.toCsv());
+    public void viewInventory() {
+        System.out.println("\n--- Current Inventory ---");
+        if (inventory.isEmpty()) {
+            System.out.println("No products available in inventory.");
+            return;
         }
-        Files.write(path, lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        for (Product product : inventory.values()) {
+            System.out.println(product);
+        }
     }
 
-    /**
-     * Load inventory from CSV file. Existing products are cleared.
-     */
-    public void loadFromFile(Path path) throws IOException {
-        products.clear();
-        if (!Files.exists(path)) return;
-        List<String> lines = Files.readAllLines(path);
-        for (String line : lines) {
-            if (line.trim().isEmpty()) continue;
-            Product p = Product.fromCsv(line);
-            products.put(p.getId(), p);
+    private boolean isInvalidProductId(String productId) {
+        if (productId == null || productId.trim().isEmpty()) {
+            System.out.println("Error: Product ID cannot be empty.");
+            return true;
         }
+        return false;
+    }
+
+    private boolean isInvalidQuantity(int quantity, String action) {
+        if (quantity <= 0) {
+            System.out.println("Error: " + capitalize(action) + " quantity must be greater than zero.");
+            return true;
+        }
+        return false;
+    }
+
+    private String capitalize(String text) {
+        return text == null || text.isEmpty()
+                ? ""
+                : text.substring(0, 1).toUpperCase() + text.substring(1).toLowerCase();
     }
 }
