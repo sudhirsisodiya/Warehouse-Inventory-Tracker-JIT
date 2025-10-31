@@ -1,48 +1,53 @@
-import java.util.*;
+import java.util.HashMap;
 
 public class Warehouse {
-    private final String name;
-    private final Map<String, Product> inventory = new HashMap<>();
-    private final List<StockObserver> observers = new ArrayList<>();
+    private String name;
+    private HashMap<String, Product> products = new HashMap<>();
 
     public Warehouse(String name) {
         this.name = name;
     }
 
-    public void addObserver(StockObserver observer) {
-        observers.add(observer);
+    public String getName() {
+        return name;
     }
 
-    public void addProduct(Product product) {
-        inventory.put(product.getId(), product);
-        System.out.println("✅ " + name + " added product: " + product);
+    public void addProduct(Product p) {
+        products.put(p.getId(), p);
+        System.out.println("✅ " + name + " added product: " + p);
     }
 
-    public void receiveShipment(String productId, int quantity) throws ProductNotFoundException {
-        Product p = inventory.get(productId);
-        if (p == null) throw new ProductNotFoundException("Product not found: " + productId);
-        p.increaseStock(quantity);
-        System.out.println("📦 Shipment received in " + name + ": " + quantity + " units of " + p.getName());
+    public void receiveShipment(String productId, int qty) {
+        Product p = products.get(productId);
+        if (p != null) {
+            p.increaseStock(qty);
+            System.out.println("📦 Received " + qty + " units of " + p.getName() + " in " + name);
+        } else {
+            System.out.println("❌ Product not found in this warehouse!");
+        }
     }
 
-    public void fulfillOrder(String productId, int quantity)
-            throws ProductNotFoundException, InsufficientStockException {
-        Product p = inventory.get(productId);
-        if (p == null) throw new ProductNotFoundException("Product not found: " + productId);
-
-        p.decreaseStock(quantity);
-        System.out.println("🧾 Order fulfilled from " + name + ": " + quantity + " " + p.getName());
-
-        if (p.getQuantity() < p.getReorderThreshold()) {
-            for (StockObserver observer : observers)
-                observer.onLowStock(name, p);
+    public void fulfillOrder(String productId, int qty) {
+        Product p = products.get(productId);
+        if (p != null) {
+            p.decreaseStock(qty);
+            System.out.println("🧾 Order fulfilled from " + name + ": " + qty + " " + p.getName());
+            if (p.isLowStock()) {
+                System.out.println("⚠️ ALERT: Low stock for " + p.getName() + " in " + name + " warehouse – only " + p.getQuantity() + " left!");
+            }
+        } else {
+            System.out.println("❌ Product not found in this warehouse!");
         }
     }
 
     public void showInventory() {
-        System.out.println("\n🏭 " + name + " Inventory:");
-        for (Product p : inventory.values()) {
-            System.out.println("   → " + p);
+        System.out.println("\n📍 Inventory of " + name + " warehouse:");
+        if (products.isEmpty()) {
+            System.out.println("   (No products found)");
+        } else {
+            for (Product p : products.values()) {
+                System.out.println("   " + p);
+            }
         }
     }
 }

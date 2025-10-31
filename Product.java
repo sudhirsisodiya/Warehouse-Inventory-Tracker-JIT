@@ -1,33 +1,50 @@
 public class Product {
-    private final String id;
+    private String id;
     private String name;
     private int quantity;
-    private int reorderThreshold;
+    private int threshold;
 
-    public Product(String id, String name, int quantity, int reorderThreshold) {
+    public Product(String id, String name, int quantity, int threshold) {
         this.id = id;
         this.name = name;
         this.quantity = quantity;
-        this.reorderThreshold = reorderThreshold;
+        this.threshold = threshold;
     }
 
-    public String getId() { return id; }
-    public String getName() { return name; }
-    public int getQuantity() { return quantity; }
-    public int getReorderThreshold() { return reorderThreshold; }
-
-    public void increaseStock(int amount) {
-        if (amount > 0) quantity += amount;
+    public String getId() {
+        return id;
     }
 
-    public void decreaseStock(int amount) throws InsufficientStockException {
-        if (amount > quantity)
-            throw new InsufficientStockException("Not enough stock for " + name);
-        quantity -= amount;
+    public String getName() {
+        return name;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public int getThreshold() {
+        return threshold;
+    }
+
+    public void increaseStock(int qty) {
+        this.quantity += qty;
+    }
+
+    public void decreaseStock(int qty) {
+        if (qty > quantity) {
+            System.out.println("⚠️ Not enough stock to fulfill the order!");
+            return;
+        }
+        this.quantity -= qty;
+    }
+
+    public boolean isLowStock() {
+        return quantity <= threshold;
     }
 
     @Override
     public String toString() {
-        return String.format("Product[id=%s, name=%s, qty=%d, threshold=%d]", id, name, quantity, reorderThreshold);
+        return "Product[id=" + id + ", name=" + name + ", qty=" + quantity + ", threshold=" + threshold + "]";
     }
 }

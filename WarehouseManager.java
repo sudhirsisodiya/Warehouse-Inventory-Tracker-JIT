@@ -1,13 +1,14 @@
-import java.util.*;
+import java.util.HashMap;
 
 public class WarehouseManager {
-    private final Map<String, Warehouse> warehouses = new HashMap<>();
-    private final AlertService alertService = new AlertService();
+    private HashMap<String, Warehouse> warehouses = new HashMap<>();
 
     public void addWarehouse(String name) {
-        Warehouse w = new Warehouse(name);
-        w.addObserver(alertService);
-        warehouses.put(name, w);
+        if (warehouses.containsKey(name)) {
+            System.out.println("⚠️ Warehouse already exists!");
+            return;
+        }
+        warehouses.put(name, new Warehouse(name));
         System.out.println("🏬 Warehouse created: " + name);
     }
 
@@ -16,11 +17,12 @@ public class WarehouseManager {
     }
 
     public void showAllInventories() {
-        System.out.println("\n============================");
-        System.out.println("📊 All Warehouse Inventories");
-        System.out.println("============================");
-        for (Warehouse w : warehouses.values()) {
-            w.showInventory();
+        if (warehouses.isEmpty()) {
+            System.out.println("❌ No warehouses created yet!");
+        } else {
+            for (Warehouse w : warehouses.values()) {
+                w.showInventory();
+            }
         }
     }
 }
