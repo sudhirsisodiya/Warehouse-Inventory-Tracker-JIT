@@ -16,18 +16,14 @@ public class Product {
     public int getQuantity() { return quantity; }
     public int getReorderThreshold() { return reorderThreshold; }
 
-    public void setName(String name) { this.name = name; }
-    public void setReorderThreshold(int reorderThreshold) { this.reorderThreshold = reorderThreshold; }
-
     public void increaseStock(int amount) {
-        if (amount > 0) this.quantity += amount;
+        if (amount > 0) quantity += amount;
     }
 
     public void decreaseStock(int amount) throws InsufficientStockException {
-        if (amount > quantity) {
+        if (amount > quantity)
             throw new InsufficientStockException("Not enough stock for " + name);
-        }
-        this.quantity -= amount;
+        quantity -= amount;
     }
 
     @Override
