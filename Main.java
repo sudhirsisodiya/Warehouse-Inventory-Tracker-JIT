@@ -1,26 +1,36 @@
 public class Main {
     public static void main(String[] args) {
         try {
-            Warehouse warehouse = new Warehouse();
-            AlertService alertService = new AlertService();
+            WarehouseManager manager = new WarehouseManager();
 
-            warehouse.addObserver(alertService);
+            // Add multiple warehouses
+            manager.addWarehouse("Mumbai");
+            manager.addWarehouse("Delhi");
+            manager.addWarehouse("Chennai");
 
-            // Step 1: Add Product
-            Product laptop = new Product("P001", "Laptop", 0, 5);
-            warehouse.addProduct(laptop);
+            Warehouse mumbai = manager.getWarehouse("Mumbai");
+            Warehouse delhi = manager.getWarehouse("Delhi");
+            Warehouse chennai = manager.getWarehouse("Chennai");
 
-            // Step 2: Receive Shipment
-            warehouse.receiveShipment("P001", 10);
+            // Add same product (Laptop) but with different quantities and thresholds
+            mumbai.addProduct(new Product("P001", "Laptop", 4, 5));
+            delhi.addProduct(new Product("P001", "Laptop", 10, 3));
+            chennai.addProduct(new Product("P001", "Laptop", 1, 5));
 
-            // Step 3: Fulfill Orders
-            warehouse.fulfillOrder("P001", 6); // Remaining = 4 -> Alert triggers
+            // Add different products to some warehouses
+            delhi.addProduct(new Product("P002", "Mouse", 15, 8));
+            mumbai.addProduct(new Product("P003", "Keyboard", 2, 3));
 
-            // Step 4: View Inventory
-            warehouse.showInventory();
+            // Fulfill some orders
+            mumbai.fulfillOrder("P001", 2); // Laptop mumbai me alert trigger hoga
+            delhi.fulfillOrder("P002", 10); // Mouse delhi me alert trigger hoga
+            chennai.fulfillOrder("P001", 1); // Laptop chennai out of stock
+
+            // Show all inventories
+            manager.showAllInventories();
 
         } catch (Exception e) {
-            System.out.println("❌ Error: " + e.getMessage());
+            System.out.println("❌ " + e.getMessage());
         }
     }
 }
