@@ -1,41 +1,37 @@
-package model;
-
 public class Product {
-    private String productId;
+    private final String id;
     private String name;
     private int quantity;
     private int reorderThreshold;
 
-    public Product(String productId, String name, int quantity, int reorderThreshold) {
-        this.productId = productId;
+    public Product(String id, String name, int quantity, int reorderThreshold) {
+        this.id = id;
         this.name = name;
         this.quantity = quantity;
         this.reorderThreshold = reorderThreshold;
     }
 
-    public String getProductId() {
-        return productId;
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public int getQuantity() { return quantity; }
+    public int getReorderThreshold() { return reorderThreshold; }
+
+    public void setName(String name) { this.name = name; }
+    public void setReorderThreshold(int reorderThreshold) { this.reorderThreshold = reorderThreshold; }
+
+    public void increaseStock(int amount) {
+        if (amount > 0) this.quantity += amount;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(int quantity) {
-        this.quantity = quantity;
-    }
-
-    public int getReorderThreshold() {
-        return reorderThreshold;
+    public void decreaseStock(int amount) throws InsufficientStockException {
+        if (amount > quantity) {
+            throw new InsufficientStockException("Not enough stock for " + name);
+        }
+        this.quantity -= amount;
     }
 
     @Override
     public String toString() {
-        return "Product ID: " + productId + ", Name: " + name + 
-               ", Quantity: " + quantity + ", Reorder Threshold: " + reorderThreshold;
+        return String.format("Product[id=%s, name=%s, qty=%d, threshold=%d]", id, name, quantity, reorderThreshold);
     }
 }
